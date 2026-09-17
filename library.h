@@ -156,7 +156,6 @@ namespace zext
                 }
             };
 
-        private:
             friend class __iterator;
             friend class __const_iterator;
 
@@ -494,6 +493,20 @@ namespace zext
 
             auto cbegin()   const noexcept { return const_iterator(this, 0, 0); }
             auto cend()     const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
+
+            void resize_pool(size_t new_size)
+            {
+                slots.resize(new_size);
+            }
+
+            void resize(size_t new_size)
+            {
+                if (len >= new_size) return;
+
+                auto elements_per_slot = Slot::max_elements;
+                auto old_size = slots.size();
+                resize_pool(new_size);
+            }
         };
     }
 }
