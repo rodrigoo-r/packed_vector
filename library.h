@@ -210,6 +210,20 @@ namespace zext
             {
                 insert_bits(len++, value);
             }
+
+            auto begin()    const noexcept { return __const_iterator(this, 0); }
+            auto end()      const noexcept { return __const_iterator(this, len); }
+
+            auto begin()    noexcept { return __iterator(this, 0); }
+            auto end()      noexcept { return __iterator(this, len); }
+            auto rbegin()   noexcept { return __iterator(this, len - 1); }
+            auto rend()     noexcept { return __iterator(this, -1); }
+
+            auto rbegin()   const noexcept { return __const_iterator(this, len - 1); }
+            auto rend()     const noexcept { return __const_iterator(this, -1); }
+            
+            auto cbegin()   const noexcept { return __const_iterator(this, 0); }
+            auto cend()     const noexcept { return __const_iterator(this, len); }
         };
 
         template<std::unsigned_integral T>
