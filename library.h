@@ -14,6 +14,9 @@
 //
 // This file is an extension of the Zelix Programming
 // Language Backend, called Z; hence, the zext identifier.
+//
+// NOTE: This file requires C++20 or later.
 //#==|---------------------------------------------------|==#
 
 #pragma once
+
