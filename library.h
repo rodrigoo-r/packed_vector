@@ -1,4 +1,4 @@
-//#==|--------------------------------------------------|==#
+//#==|---------------------------------------------------|==#
 //   *****              zext::packed_vector             *****
 //
 // A variation of the STL std::vector, exclusively for
@@ -14,7 +14,6 @@
 //
 // This file is an extension of the Zelix Programming
 // Language Backend, called Z; hence, the zext identifier.
-//#==|--------------------------------------------------|==#
+//#==|---------------------------------------------------|==#
 
 #pragma once
-
