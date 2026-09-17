@@ -203,12 +203,12 @@ namespace zext
             void emplace_back(Args &&...args)
             {
                 auto val = T{ std::forward<Args>(args)... };
-                insert_bits(len++, std::move(val));
+                insert_bits(len, std::move(val));
             }
 
             void push_back(T value)
             {
-                insert_bits(len++, value);
+                insert_bits(len, value);
             }
 
             auto begin()    const noexcept { return __const_iterator(this, 0); }
