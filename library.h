@@ -474,7 +474,7 @@ namespace zext
             [[nodiscard]] auto at(size_t idx) const
             {
                 assert(idx < len);
-                return slots[idx / bits_per_element][idx % bits_per_element];
+                return slots[idx / bits_per_element].at(idx % bits_per_element);
             }
 
             void push_back(T value) { emplace_back(value); }
