@@ -284,7 +284,7 @@ namespace zext
             {}
 
             [[nodiscard]] auto size()       const noexcept { return len; }
-            auto operator[](size_t idx)     const { return at(index); }
+            auto operator[](size_t idx)     const { return at(idx); }
 
             template <typename... Args>
             void emplace_back(Args &&... value)
