@@ -42,6 +42,7 @@ namespace zext
         >
         class __packed_slot_base
         {
+        public:
             // The maximum amount of bits we can store in a single slot
             // Effectively, we may have some bits unused. We trade throughput
             // for memory footprint reduction
@@ -54,10 +55,10 @@ namespace zext
             // we can store in a single slot
             static_assert(Bits_Per_Element <= max_bits);
 
+        private:
             std::bitset<max_bits> bits; // Main storage for bits
             size_t len = 0; // Number of active elements in the slot
 
-        public:
             class __iterator
             {
             public:
@@ -493,8 +494,6 @@ namespace zext
 
             auto cbegin()   const noexcept { return const_iterator(this, 0, 0); }
             auto cend()     const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
-
-            void resize_pool(size_t new_size) { slots.resize(new_size); }
         };
     }
 }
