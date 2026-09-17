@@ -27,7 +27,7 @@
 
 namespace zext
 {
-    namespace pmr
+    namespace intl
     {
         template <
             unsigned Bits_Per_Element,
@@ -109,7 +109,10 @@ namespace zext
                 insert_bits(len++, value);
             }
         };
+    }
 
+    namespace pmr
+    {
         template <
             unsigned Max_Element
         >
