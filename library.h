@@ -336,9 +336,8 @@ namespace zext
                 auto &operator++()
                 {
                     auto &v_slots = v_ptr->slots;
-                    assert(slot_idx < v_slots.size());
-
                     auto &slot = v_slots[slot_idx];
+
                     if (slot_idx == slot.size() - 1)
                     {
                         assert(slot_idx + 1 < v_slots.size());
@@ -481,18 +480,19 @@ namespace zext
             void push_back(T value) { emplace_back(value); }
 
             auto begin()    const noexcept { return const_iterator(this, 0, 0); }
-            auto end()      const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto end()      const noexcept { return const_iterator(this, slots.size(), slots.back().size()); }
 
             auto begin()    noexcept { return iterator(this, 0, 0); }
-            auto end()      noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto end()      noexcept { return iterator(this, slots.size(), slots.back().size()); }
+
             auto rbegin()   noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
-            auto rend()     noexcept { return iterator(this, 0, -1); }
+            auto rend()     noexcept { return iterator(this, -1, -1); }
 
             auto rbegin()   const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
-            auto rend()     const noexcept { return const_iterator(this, 0, -1); }
+            auto rend()     const noexcept { return const_iterator(this, -1, -1); }
 
             auto cbegin()   const noexcept { return const_iterator(this, 0, 0); }
-            auto cend()     const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto cend()     const noexcept { return const_iterator(this, slots.size(), slots.back().size()); }
 
             void resize_pool(size_t new_size)
             {
