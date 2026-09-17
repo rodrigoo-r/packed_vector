@@ -20,3 +20,102 @@
 
 #pragma once
 
+#include <vector>
+#include <bitset>
+#include <cassert>
+#include <type_traits>
+
+namespace zext
+{
+    namespace pmr
+    {
+        template <
+            unsigned Bits_Per_Element,
+            unsigned Max_Value,
+
+            // The inner container type that holds the integers
+            std::unsigned_integral Container_Type,
+
+            // The type of the elements we return when indexing/retrieving
+            // NOTE: Not necessarily the elements in the vector, as those are bits
+            std::unsigned_integral T
+        >
+        class __packed_slot_base
+        {
+            // The maximum amount of bits we can store in a single slot
+            // Effectively, we may have some bits unused. We trade throughput
+            // for memory footprint reduction
+            static constexpr auto max_bits = sizeof(Container_Type) * CHAR_BIT;
+
+            // The maximum number of elements we can store in a single slot
+            static constexpr auto max_elements = max_bits / Bits_Per_Element;
+
+            // Assert that the elements are smaller than the number of bits
+            // we can store in a single slot
+            static_assert(Bits_Per_Element <= max_bits);
+
+            std::bitset<max_bits> bits; // Main storage for bits
+            size_t len = 0; // Number of active elements in the slot
+
+        public:
+            [[nodiscard]] auto size() const noexcept { return len; }
+            [[nodiscard]] auto empty() const noexcept { return len == 0; }
+            [[nodiscard]] auto capacity() const noexcept { return max_elements; }
+            [[nodiscard]] auto capacity_bits() const noexcept { return max_bits; }
+            [[nodiscard]] auto max_size() const noexcept { return max_elements; }
+            [[nodiscard]] auto full() const noexcept { return len == max_elements; }
+
+            void insert_bits(size_t index, T value)
+            {
+                assert(!full() && value <= Max_Value);
+
+                // NOTE: index is in elements, not bits!
+                auto begin = index * Bits_Per_Element;
+                auto end = begin + Bits_Per_Element;
+
+                for (auto i = begin; i < end; ++i)
+                {
+                    bits[i] = (value >> (end - i - 1)) & 1;
+                }
+
+                ++len;
+            }
+
+            [[nodiscard]] auto at(size_t idx) const
+            {
+                assert(idx < len);
+                // NOTE: idx is in elements, not bits!
+                auto begin = idx * Bits_Per_Element;
+                auto end = begin + Bits_Per_Element;
+                T result{};
+
+                for (auto i = begin; i < end; ++i)
+                {
+                    result |= (bits[i] << (end - i - 1));
+                }
+
+                return result;
+            }
+
+            template <typename ...Args>
+            void emplace_back(Args &&...args)
+            {
+                auto val = T{ std::forward<Args>(args)... };
+                insert_bits(len++, std::move(val));
+            }
+
+            void push_back(T value)
+            {
+                insert_bits(len++, value);
+            }
+        };
+
+        template <
+            unsigned Max_Element
+        >
+        class packed_vector
+        {
+
+        };
+    }
+}
