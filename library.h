@@ -505,7 +505,13 @@ namespace zext
 
                 auto elements_per_slot = Slot::max_elements;
                 auto old_size = slots.size();
-                resize_pool(new_size);
+                auto slots_needed = (new_size + elements_per_slot - 1) / elements_per_slot;
+
+                if (slots_needed <= old_size) return;
+                auto slots_requested = slots_needed - old_size;
+
+                resize_pool(slots_requested);
+                len = new_size;
             }
         };
     }
