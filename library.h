@@ -24,11 +24,15 @@
 #include <bitset>
 #include <cassert>
 #include <type_traits>
+#include <memory_resource>
 
 namespace zext
 {
     namespace __intl__
     {
+        template <typename T>
+        concept __maybe_enum = std::is_unsigned_v<T> || std::is_enum_v<T>;
+
         template <
             unsigned Bits_Per_Element,
             unsigned Max_Value,
@@ -38,7 +42,7 @@ namespace zext
 
             // The type of the elements we return when indexing/retrieving
             // NOTE: Not necessarily the elements in the vector, as those are bits
-            std::unsigned_integral T
+            __maybe_enum T
         >
         class __packed_slot_base
         {
@@ -104,6 +108,11 @@ namespace zext
                 {
                     return s_ptr == other.s_ptr && el_idx == other.el_idx;
                 }
+
+                auto operator!=(const __iterator& other) const
+                {
+                    return !operator==(other);
+                }
             };
 
             class __const_iterator
@@ -154,6 +163,11 @@ namespace zext
                 {
                     return s_ptr == other.s_ptr && el_idx == other.el_idx;
                 }
+
+                auto operator!=(const __const_iterator& other) const
+                {
+                    return !operator==(other);
+                }
             };
 
             friend class __iterator;
@@ -169,15 +183,26 @@ namespace zext
 
             void insert_bits(size_t index, T value)
             {
-                assert(!full() && value <= Max_Value);
+                assert(!full() && (Container_Type)value <= Max_Value);
 
                 // NOTE: index is in elements, not bits!
                 auto begin = index * Bits_Per_Element;
                 auto end = begin + Bits_Per_Element;
 
-                for (auto i = begin; i < end; ++i)
+                if constexpr (std::is_enum_v<T>)
                 {
-                    bits[i] = (value >> (end - i - 1)) & 1;
+                    auto ins_value = (Container_Type)value;
+                    for (auto i = begin; i < end; ++i)
+                    {
+                        bits[i] = (ins_value >> (end - i - 1)) & 1;
+                    }
+                }
+                else
+                {
+                    for (auto i = begin; i < end; ++i)
+                    {
+                        bits[i] = (value >> (end - i - 1)) & 1;
+                    }
                 }
 
                 ++len;
@@ -189,14 +214,14 @@ namespace zext
                 // NOTE: idx is in elements, not bits!
                 auto begin = idx * Bits_Per_Element;
                 auto end = begin + Bits_Per_Element;
-                T result{};
+                Container_Type result{};
 
                 for (auto i = begin; i < end; ++i)
                 {
                     result |= (bits[i] << (end - i - 1));
                 }
 
-                return result;
+                return (T)result;
             }
 
             template <typename ...Args>
@@ -210,20 +235,6 @@ namespace zext
             {
                 insert_bits(len, value);
             }
-
-            auto begin()    const noexcept { return __const_iterator(this, 0); }
-            auto end()      const noexcept { return __const_iterator(this, len); }
-
-            auto begin()    noexcept { return __iterator(this, 0); }
-            auto end()      noexcept { return __iterator(this, len); }
-            auto rbegin()   noexcept { return __iterator(this, len - 1); }
-            auto rend()     noexcept { return __iterator(this, -1); }
-
-            auto rbegin()   const noexcept { return __const_iterator(this, len - 1); }
-            auto rend()     const noexcept { return __const_iterator(this, -1); }
-
-            auto cbegin()   const noexcept { return __const_iterator(this, 0); }
-            auto cend()     const noexcept { return __const_iterator(this, len); }
         };
 
         template<std::unsigned_integral T>
@@ -234,7 +245,7 @@ namespace zext
             // - Find the number of value bits in a given type T (A)
             // - Find the leading zeroes in a given type T (B)
             // Then A - B = N; N + 1 = Ceil(Log2(T + 1))
-            return n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1);
+            return (n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1)) + 1;
         }
     }
 
@@ -255,7 +266,7 @@ namespace zext
 
             // The type of the elements we return when indexing/retrieving
             // NOTE: Not necessarily the elements in the vector, as those are bits
-            std::unsigned_integral T,
+            __intl__::__maybe_enum T,
 
             // How the user prefers to select the inner storage that holds elements
             config::storage_selection Storage = config::storage_selection::automatic,
@@ -340,14 +351,12 @@ namespace zext
 
                     if (slot_idx == slot.size() - 1)
                     {
-                        assert(slot_idx + 1 < v_slots.size());
                         ++slot_idx;
                         el_idx = 0;
                     }
                     else
                     {
                         ++el_idx;
-                        assert(el_idx < slot.size());
                     }
 
                     return *this;
@@ -367,6 +376,11 @@ namespace zext
                     return v_ptr == other.v_ptr &&
                         el_idx == other.el_idx &&
                         slot_idx == other.slot_idx;
+                }
+
+                auto operator!=(const iterator& other) const
+                {
+                    return !operator==(other);
                 }
             };
 
@@ -413,19 +427,16 @@ namespace zext
                 auto &operator++()
                 {
                     auto &v_slots = v_ptr->slots;
-                    assert(slot_idx < v_slots.size());
 
                     auto &slot = v_slots[slot_idx];
                     if (slot_idx == slot.size() - 1)
                     {
-                        assert(slot_idx + 1 < v_slots.size());
                         ++slot_idx;
                         el_idx = 0;
                     }
                     else
                     {
                         ++el_idx;
-                        assert(el_idx < slot.size());
                     }
 
                     return *this;
@@ -445,6 +456,11 @@ namespace zext
                     return v_ptr == other.v_ptr &&
                         el_idx == other.el_idx &&
                         slot_idx == other.slot_idx;
+                }
+
+                auto operator!=(const const_iterator& other) const
+                {
+                    return !operator==(other);
                 }
             };
 
@@ -483,7 +499,7 @@ namespace zext
             auto end()      const noexcept { return const_iterator(this, slots.size(), slots.back().size()); }
 
             auto begin()    noexcept { return iterator(this, 0, 0); }
-            auto end()      noexcept { return iterator(this, slots.size(), slots.back().size()); }
+            auto end()      noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
 
             auto rbegin()   noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
             auto rend()     noexcept { return iterator(this, -1, -1); }
@@ -515,4 +531,29 @@ namespace zext
             }
         };
     }
+
+    template <
+        // The maximum number that a given element T can be, inclusive
+        unsigned Max_Value,
+
+        // The type of the elements we return when indexing/retrieving
+        // NOTE: Not necessarily the elements in the vector, as those are bits
+        __intl__::__maybe_enum T,
+
+        // How the user prefers to select the inner storage that holds elements
+        config::storage_selection Storage = config::storage_selection::automatic,
+        std::unsigned_integral Word = std::uint32_t // Placeholder if automatic storage is selected
+    >
+    class packed_vector :
+        public pmr::packed_vector<Max_Value, T, Storage, Word>
+    {
+        using Base = pmr::packed_vector<Max_Value, T, Storage, Word>;
+
+    public:
+        using Base::Base;
+
+        packed_vector() :
+            Base(std::pmr::get_default_resource())
+        {}
+    };
 }
