@@ -480,19 +480,21 @@ namespace zext
 
             void push_back(T value) { emplace_back(value); }
 
-            auto begin()    const noexcept { return __const_iterator(this, 0); }
-            auto end()      const noexcept { return __const_iterator(this, len); }
+            auto begin()    const noexcept { return const_iterator(this, 0, 0); }
+            auto end()      const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
 
-            auto begin()    noexcept { return __iterator(this, 0); }
-            auto end()      noexcept { return __iterator(this, len); }
-            auto rbegin()   noexcept { return __iterator(this, len - 1); }
-            auto rend()     noexcept { return __iterator(this, -1); }
+            auto begin()    noexcept { return iterator(this, 0, 0); }
+            auto end()      noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto rbegin()   noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto rend()     noexcept { return iterator(this, 0, -1); }
 
-            auto rbegin()   const noexcept { return __const_iterator(this, len - 1); }
-            auto rend()     const noexcept { return __const_iterator(this, -1); }
+            auto rbegin()   const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
+            auto rend()     const noexcept { return const_iterator(this, 0, -1); }
 
-            auto cbegin()   const noexcept { return __const_iterator(this, 0); }
-            auto cend()     const noexcept { return __const_iterator(this, len); }
+            auto cbegin()   const noexcept { return const_iterator(this, 0, 0); }
+            auto cend()     const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
+
+            void resize_pool(size_t new_size) { slots.resize(new_size); }
         };
     }
 }
