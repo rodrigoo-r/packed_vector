@@ -17,6 +17,6 @@ add_library(zext::packed_vector ALIAS zext_packed_vector)
 target_include_directories(
         zext_packed_vector
         INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_compile_features(zext_packed_vector INTERFACE ${CXXSTANDARD})
