@@ -245,7 +245,7 @@ namespace zext
             // - Find the number of value bits in a given type T (A)
             // - Find the leading zeroes in a given type T (B)
             // Then A - B = N; N + 1 = Ceil(Log2(T + 1))
-            return (n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1)) + 1;
+            return n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1);
         }
     }
 
@@ -384,86 +384,6 @@ namespace zext
                 }
             };
 
-            class const_iterator
-            {
-            public:
-                // STL Compatibility
-                using iterator_category = std::random_access_iterator_tag;
-                using value_type        = const T;
-                using difference_type   = std::ptrdiff_t;
-                using pointer           = void;
-                using reference         = value_type;
-
-            private:
-                using Vector =
-                    packed_vector<Max_Value, T, Storage, Word>;
-
-                using Const_Vector = const Vector;
-                using Const_Vector_Ptr = const Vector *const;
-
-                Const_Vector_Ptr v_ptr;
-                size_t slot_idx = 0; // Index of the slot in the vector
-                size_t el_idx = 0; // Index of the element in the slot
-
-            public:
-                const_iterator(Const_Vector_Ptr slot, size_t slot_idx, size_t el_idx) :
-                    v_ptr(slot), slot_idx(slot_idx), el_idx(el_idx)
-                {}
-
-                reference operator*() const
-                {
-                    auto &v_slots = v_ptr->slots;
-
-                    assert(slot_idx < v_slots.size());
-                    auto &slot = v_slots[slot_idx];
-                    assert(el_idx < slot.size());
-
-                    return slot.at(el_idx);
-                }
-
-                void operator->() const = delete;
-
-                // Prefix increment
-                auto &operator++()
-                {
-                    auto &v_slots = v_ptr->slots;
-
-                    auto &slot = v_slots[slot_idx];
-                    if (slot_idx == slot.size() - 1)
-                    {
-                        ++slot_idx;
-                        el_idx = 0;
-                    }
-                    else
-                    {
-                        ++el_idx;
-                    }
-
-                    return *this;
-                }
-
-                // Postfix increment
-                auto operator++(int)
-                {
-                    auto tmp = *this;
-                    ++(*this);
-
-                    return tmp;
-                }
-
-                auto operator==(const const_iterator& other) const
-                {
-                    return v_ptr == other.v_ptr &&
-                        el_idx == other.el_idx &&
-                        slot_idx == other.slot_idx;
-                }
-
-                auto operator!=(const const_iterator& other) const
-                {
-                    return !operator==(other);
-                }
-            };
-
         private:
             friend class iterator;
 
@@ -495,20 +415,8 @@ namespace zext
 
             void push_back(T value) { emplace_back(value); }
 
-            auto begin()    const noexcept { return const_iterator(this, 0, 0); }
-            auto end()      const noexcept { return const_iterator(this, slots.size(), slots.back().size()); }
-
             auto begin()    noexcept { return iterator(this, 0, 0); }
             auto end()      noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
-
-            auto rbegin()   noexcept { return iterator(this, slots.size() - 1, slots.back().size() - 1); }
-            auto rend()     noexcept { return iterator(this, -1, -1); }
-
-            auto rbegin()   const noexcept { return const_iterator(this, slots.size() - 1, slots.back().size() - 1); }
-            auto rend()     const noexcept { return const_iterator(this, -1, -1); }
-
-            auto cbegin()   const noexcept { return const_iterator(this, 0, 0); }
-            auto cend()     const noexcept { return const_iterator(this, slots.size(), slots.back().size()); }
 
             void resize_pool(size_t new_size)
             {
