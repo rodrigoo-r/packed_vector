@@ -417,6 +417,12 @@ namespace zext
                 --len;
             }
 
+            void clear() noexcept
+            {
+                slots.clear();
+                len = 0;
+            }
+
             auto begin() { return iterator(slots.begin()->begin(), slots.begin()->end(), slots.begin(), slots.end(), this); }
             auto end() { return iterator(slots.back().end(), slots.back().end(), slots.end(), slots.end(), this); }
         };
