@@ -193,7 +193,7 @@ namespace zext
             [[nodiscard]] auto capacity()       const noexcept { return Base::max_elements; }
             [[nodiscard]] auto capacity_bits()  const noexcept { return Base::max_bits; }
             [[nodiscard]] auto max_size()       const noexcept { return Base::max_elements; }
-            [[nodiscard]] auto full()           const noexcept { return size() == Base::max_elements; }
+            [[nodiscard]] auto full()           const noexcept { return inner.full(); }
 
             [[nodiscard]] auto at(size_t idx) const { return inner.retrieve(idx); }
 
