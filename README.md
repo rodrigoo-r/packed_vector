@@ -1,30 +1,29 @@
 # `zext::packed_vector`
 
-A header-only C++20 container for storing small unsigned integers—or enum
-values—in a compact bit-packed representation.
+`zext::packed_vector` is a header-only C++20 container for compactly storing
+bounded unsigned integers or enum values. It packs each element into only the
+bits required by its declared inclusive maximum, instead of allocating a full
+integer-sized object for every value.
 
-`zext::packed_vector` is intended for sequences whose values have a known,
-small upper bound. Rather than allocating a full native integer for each
-entry, it stores only the number of bits required by that bound. For example,
-values in the range `0` through `15` use four bits per element.
+For example, values from `0` through `15` require four bits each. Values from
+`0` through `3` require two bits each.
 
-> **Status:** Early-stage project (version 0.0.1). The public API is small and
-> may evolve.
+> **Version:** 1.0.0
 
 ## Requirements
 
 - A C++20-compatible compiler
-- CMake 3.12 or later when integrating with CMake
+- CMake 3.12 or later when building the example or adding the project with
+  CMake
 
-The library has no required runtime dependencies. If
-[`magic_enum`](https://github.com/Neargye/magic_enum) is available on the
-include path, support for `zext::packed_enum_vector` is enabled automatically.
-Define `ZEXT_DISABLE_MAGIC_ENUM` before including the header to disable that
-integration.
+There are no required runtime dependencies. If
+[`magic_enum`](https://github.com/Neargye/magic_enum) is on the include path,
+`zext::packed_enum_vector` support is enabled automatically. Define
+`ZEXT_DISABLE_MAGIC_ENUM` before including the header to opt out.
 
 ## Quick start
 
-Add the repository's `Include` directory to your compiler's include path, then
+Add the repository's `Include` directory to your compiler's include path and
 include the single header:
 
 ```cpp
@@ -35,19 +34,19 @@ include the single header:
 
 int main()
 {
-    // Each value is expected to be in [0, 15], so four bits are stored per item.
+    // Values are in [0, 15], so each element occupies four bits.
     zext::packed_vector<15, std::uint8_t> values;
 
     values.push_back(3);
-    values.emplace_back(12);
+    values.emplace_back(std::uint8_t{12});
 
-    std::cout << values.size() << " values: "
-              << static_cast<unsigned>(values[0]) << ", "
-              << static_cast<unsigned>(values.at(1)) << '\n';
+    std::cout << "first: " << static_cast<unsigned>(*values[0]) << '\n';
+    values[1] = 7;
+    std::cout << "second: " << static_cast<unsigned>(*values.at(1)) << '\n';
 }
 ```
 
-Compile it with a C++20 compiler, for example:
+Compile it with a C++20 compiler:
 
 ```sh
 c++ -std=c++20 -I/path/to/packed_vector/Include example.cpp -o example
@@ -55,62 +54,89 @@ c++ -std=c++20 -I/path/to/packed_vector/Include example.cpp -o example
 
 ## CMake integration
 
-Add the project as a subdirectory, then link its interface target. The header
-directory uses an uppercase `Include` in the current source tree; add it
-explicitly until the project layout and CMake include path are aligned.
+Add the project as a subdirectory and link its interface target:
 
 ```cmake
 add_subdirectory(path/to/packed_vector)
 
 target_link_libraries(my_target PRIVATE zext::packed_vector)
-target_include_directories(my_target PRIVATE
-    path/to/packed_vector/Include
-)
 ```
+
+The target publishes the `Include` directory and requires C++20.
 
 ## Usage
 
-### Choosing the bound and value type
+### Choose a bound and value type
 
-The first template argument, `Max_Value`, is the inclusive maximum value that
-will be stored. It determines the number of bits reserved for every element.
-The second argument is the unsigned integer or enum type returned by access
-operations.
+The first template argument, `Max_Value`, is the inclusive maximum valid
+value. It determines the fixed number of bits reserved per element. The
+second argument is the unsigned integer or enum type used by the interface.
 
 ```cpp
-// Values 0 through 7: 3 bits per element.
+// 0 through 7: three bits per element.
 zext::packed_vector<7, std::uint8_t> flags;
 
-// Values 0 through 1,023: 10 bits per element.
+// 0 through 1,023: ten bits per element.
 zext::packed_vector<1023, std::uint16_t> identifiers;
 ```
 
-Keep inserted values within the declared range. The container is designed for
-unsigned integral types and enums; signed integer types are not supported.
+Use an unsigned integral type or an enum, and only insert values represented
+by the bound. Signed integer element types are not supported.
 
-### Appending and reading values
+### Add, access, and change values
 
-The implemented sequence operations are `push_back`, `emplace_back`, `size`,
-`at`, and read-only `operator[]`.
+`push_back` and `emplace_back` append elements. `at` and `operator[]` return
+an element proxy: dereference it to read the value, or assign to it to update
+the packed value in place. `at` and `set` use assertions to check indexes.
 
 ```cpp
 zext::packed_vector<31, std::uint8_t> scores;
 
 scores.push_back(18);
-scores.emplace_back(27);
+scores.emplace_back(std::uint8_t{27});
 
-auto first = scores.at(0);  // Bounds checked with an assertion.
-auto second = scores[1];
+auto first = *scores.at(0);
+scores[1] = 24;
+scores.set(0, 20);
 ```
 
-Elements are returned by value. The current API does not provide mutable index
-references, iterators, or erase/pop operations.
+### Iterate
 
-### Selecting the storage word
+The container supports range-based iteration. Iteration yields the same proxy
+type as indexed access; dereference it to obtain the current value.
 
-By default, the container selects an unsigned word type automatically. To
-choose one yourself, pass `zext::config::storage_selection::manual` followed
-by an unsigned integral word type:
+```cpp
+for (auto value : scores)
+{
+    std::cout << static_cast<unsigned>(*value) << '\n';
+}
+```
+
+### Size and removal
+
+`size`, `front`, `back`, `pop_back`, and `clear` provide the usual basic
+sequence operations. Accessing `front` or `back` on an empty container, or
+calling `pop_back` when it is empty, violates an assertion.
+
+```cpp
+if (scores.size() != 0)
+{
+    auto last = *scores.back();
+    scores.pop_back();
+}
+
+scores.clear();
+```
+
+`capacity()` reports the number of allocated packed slots, while `slot_size()`
+reports the byte size of one slot. They are useful for inspecting the storage
+layout, not for a `std::vector`-style element-capacity guarantee.
+
+### Select the storage word
+
+Storage is selected automatically by default. To specify an unsigned storage
+word yourself, pass `zext::config::storage_selection::manual` followed by the
+word type:
 
 ```cpp
 using compact_values = zext::packed_vector<255,
@@ -119,13 +145,12 @@ using compact_values = zext::packed_vector<255,
                                            std::uint32_t>;
 ```
 
-The storage word must be wide enough to hold one packed element.
+The chosen word must be wide enough for one packed element.
 
-### Polymorphic memory resources
+### Use a polymorphic memory resource
 
-`zext::pmr::packed_vector` accepts a `std::pmr::memory_resource`, allowing the
-slot storage to use an application-provided allocator. `zext::packed_vector`
-uses the default polymorphic resource.
+`zext::pmr::packed_vector` takes a `std::pmr::memory_resource` for its slot
+storage. `zext::packed_vector` uses the default polymorphic resource.
 
 ```cpp
 #include <array>
@@ -138,10 +163,10 @@ zext::pmr::packed_vector<63, std::uint8_t> values{&resource};
 values.push_back(42);
 ```
 
-### Enum values with `magic_enum`
+### Pack enum values with `magic_enum`
 
-When `magic_enum.hpp` is available, `packed_enum_vector` determines the upper
-bound from the number of enumerators:
+When `magic_enum.hpp` is available, `packed_enum_vector` derives its bound
+from the enum's number of enumerators:
 
 ```cpp
 enum class colour : std::uint8_t { red, green, blue };
@@ -152,11 +177,12 @@ colours.push_back(colour::green);
 
 ## How packing works
 
-Values are appended to fixed-size slots. A slot holds several values in a
-single unsigned storage word, with each value occupying the number of bits
-derived from `Max_Value`. This reduces storage for bounded values, at the cost
-of bit manipulation during reads and writes. If the element width does not
-divide the word width exactly, unused bits may remain in each slot.
+Elements are placed in fixed-size slots backed by an unsigned storage word.
+Each value occupies the number of bits derived from `Max_Value`; when a slot
+is full, the container allocates another slot. This can substantially reduce
+memory use for tightly bounded values, with the trade-off of bit manipulation
+during reads and writes. When the element width does not evenly divide the
+storage-word width, a slot can contain unused bits.
 
 ## License
 
@@ -168,4 +194,3 @@ Distributed under the [Apache License, Version 2.0](LICENSE).
 
 Please follow the repository's [Code of Conduct](CODE_OF_CONDUCT.md) when
 participating in the project.
-
