@@ -40,6 +40,17 @@ namespace zext
         template <typename T>
         concept __maybe_enum = std::is_unsigned_v<T> || std::is_enum_v<T>;
 
+        template<std::unsigned_integral T>
+        consteval int __bits_per_element(T n)
+        {
+            // Mathematically, a given integer T uses at least Ceil(Log2(T + 1)) bits
+            // However, we can't make that consteval, so we use C++20 utilities:
+            // - Find the number of value bits in a given type T (A)
+            // - Find the leading zeroes in a given type T (B)
+            // Then A - B = N; N + 1 = Ceil(Log2(T + 1))
+            return n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1);
+        }
+
         template <
             unsigned Bits_Per_Element,
             std::unsigned_integral Container_Type,
@@ -227,17 +238,6 @@ namespace zext
                 inner.set(idx, value);
             }
         };
-
-        template<std::unsigned_integral T>
-        consteval int __bits_per_element(T n)
-        {
-            // Mathematically, a given integer T uses at least Ceil(Log2(T + 1)) bits
-            // However, we can't make that consteval, so we use C++20 utilities:
-            // - Find the number of value bits in a given type T (A)
-            // - Find the leading zeroes in a given type T (B)
-            // Then A - B = N; N + 1 = Ceil(Log2(T + 1))
-            return n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1);
-        }
     }
 
     namespace config
