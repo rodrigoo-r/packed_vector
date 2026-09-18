@@ -463,6 +463,7 @@ namespace zext
             }
 
             auto capacity() const noexcept { return slots.capacity(); }
+            auto slot_size() const noexcept { return sizeof(Slot); }
             auto slot_capacity() const noexcept { return bits_per_element; }
 
             void set(size_t idx, T value)
