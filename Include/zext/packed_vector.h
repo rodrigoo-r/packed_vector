@@ -128,7 +128,7 @@ namespace zext
 
             void set(size_t idx, T val)
             {
-                assert(!full());
+                assert(idx < max_elements);
                 const auto begin = idx * Bits_Per_Element;
 
                 auto insert_value = (Container_Type)val;
