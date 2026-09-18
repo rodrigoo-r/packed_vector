@@ -301,7 +301,7 @@ namespace zext
             Word
         >
     {
-        using Base = packed_vector<magic_enum::enum_count<T>, T>;
+        using Base = packed_vector<magic_enum::enum_count<T>, T, Storage, Word>;
     public:
         using Base::Base;
     }
