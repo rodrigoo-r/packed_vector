@@ -126,16 +126,21 @@ namespace zext
         public:
             [[nodiscard]] bool full() const noexcept { return len == max_elements; }
 
-            void insert(T val)
+            void set(size_t idx, T val)
             {
                 assert(!full());
-                const auto begin = len++ * Bits_Per_Element;
+                const auto begin = idx * Bits_Per_Element;
 
                 auto insert_value = (Container_Type)val;
                 for (std::size_t bit = 0; bit < Bits_Per_Element; ++bit)
                 {
                     bits[begin + bit] = (insert_value >> (Bits_Per_Element - bit - 1)) & 1;
                 }
+            }
+
+            void insert(T val)
+            {
+                set(len++, val);
             }
 
             auto retrieve(size_t idx) const
@@ -204,6 +209,23 @@ namespace zext
 
             auto begin() { return inner.begin(); }
             auto end() { return inner.end(); }
+
+            auto front()
+            {
+                assert(!empty());
+                return at(0);
+            }
+
+            void back()
+            {
+                assert(!empty());
+                return at(size() - 1);
+            }
+
+            void set(size_t idx, T value)
+            {
+                inner.set(idx, value);
+            }
         };
 
         template<std::unsigned_integral T>
@@ -442,6 +464,14 @@ namespace zext
 
             auto capacity() const noexcept { return slots.capacity(); }
             auto slot_capacity() const noexcept { return bits_per_element; }
+
+            void set(size_t idx, T value)
+            {
+                assert(idx < len);
+                auto slot_idx = idx / Slot::Base::max_elements;
+                auto relative_idx = idx % Slot::Base::max_elements;
+                slots[slot_idx].set(relative_idx, value);
+            }
         };
     }
 
