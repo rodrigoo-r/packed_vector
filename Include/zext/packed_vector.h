@@ -47,7 +47,7 @@ namespace zext
             // However, we can't make that consteval, so we use C++20 utilities:
             // - Find the number of value bits in a given type T (A)
             // - Find the leading zeroes in a given type T (B)
-            // Then A - B = N; N + 1 = Ceil(Log2(T + 1))
+            // Then A - B = N; N = Ceil(Log2(T + 1))
             return n <= 1 ? 0 : std::numeric_limits<T>::digits - std::countl_zero(n - 1);
         }
 
