@@ -780,7 +780,7 @@ namespace zext
         using Base = packed_vector<magic_enum::enum_count<T>, T, Storage, Word>;
     public:
         using Base::Base;
-    }
+    };
 #   endif
 #   endif
 }
