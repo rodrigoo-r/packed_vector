@@ -104,7 +104,7 @@ namespace zext
                 // NOTE: idx is in elements, not bits!
                 auto begin = idx * Bits_Per_Element;
                 auto end = begin + Bits_Per_Element;
-                Container_Type result{};
+                Container_Type result = 0;
 
                 for (auto i = begin; i < end; ++i)
                 {
