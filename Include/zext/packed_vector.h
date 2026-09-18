@@ -56,7 +56,66 @@ namespace zext
             // The maximum number of elements we can store in a single slot
             static constexpr auto max_elements = max_bits / Bits_Per_Element;
 
+            class __iterator
+            {
+                using Inner = __bitset_base_inner *;
+                Inner base;
+                size_t idx = 0;
+
+            public:
+                using iterator_category = std::forward_iterator_tag;
+                using value_type        = T;
+                using difference_type   = std::ptrdiff_t;
+                using pointer           = void;
+                using reference         = value_type;
+
+                __iterator(Inner base, size_t idx) :
+                    base(base), idx(idx)
+                {}
+
+                __iterator(const __iterator&) = default;
+
+                auto &operator=(const __iterator &other)
+                {
+                    if (this != &other)
+                    {
+                        base = other.base;
+                        idx = other.idx;
+                    }
+
+                    return *this;
+                }
+
+                reference operator*() const { return base->retrieve(idx); }
+                pointer operator->() = delete;
+
+                auto& operator++()
+                {
+                    idx++;
+                    return *this;
+                }
+
+                auto operator++(int)
+                {
+                    auto tmp = *this;
+                    ++(*this);
+                    return tmp;
+                }
+
+                friend bool operator==(const __iterator& a, const __iterator& b)
+                {
+                    return a.base == b.base && a.idx == b.idx;
+                }
+
+                friend bool operator!=(const __iterator& a, const __iterator& b)
+                {
+                    return a.base != b.base || a.idx != b.idx;
+                }
+            };
+
         private:
+            friend class __iterator;
+
             // Assert that the elements are smaller than the number of bits
             // we can store in a single slot
             static_assert(Bits_Per_Element <= max_bits);
@@ -95,6 +154,14 @@ namespace zext
 
             auto size() const noexcept { return len; }
             auto pop() noexcept { len--; }
+
+            auto begin()
+            {
+                if (len == 0) return end();
+                return __iterator(this, 0);
+            }
+
+            auto end() { return __iterator(this, len); }
         };
 
         template <
@@ -134,6 +201,9 @@ namespace zext
 
             void push_back(T value) { inner.insert(value); }
             void pop_back() noexcept { inner.pop(); }
+
+            auto begin() { return inner.begin(); }
+            auto end() { return inner.end(); }
         };
 
         template<std::unsigned_integral T>
@@ -202,8 +272,90 @@ namespace zext
             using Slot =
                 __intl__::__packed_slot_base<bits_per_element, Inner_Container, T>;
 
-            std::pmr::vector<Slot> slots;
+            using Slot_List =
+                std::pmr::vector<Slot>;
+
+            Slot_List slots;
             size_t len = 0; // Number of active elements across all containers
+
+        public:
+            class iterator
+            {
+            public:
+                using iterator_category = std::forward_iterator_tag;
+                using value_type        = T;
+                using difference_type   = std::ptrdiff_t;
+                using pointer           = void;
+                using reference         = value_type;
+
+            private:
+                packed_vector *base;
+
+                Slot::Base::__iterator inner_slot_it;
+                Slot_List::iterator slot_it;
+
+                Slot::Base::__iterator inner_slot_it_end;
+                Slot_List::iterator slot_it_end;
+
+            public:
+                iterator(
+                    Slot::Base::__iterator inner_it,
+                    Slot::Base::__iterator inner_it_end,
+                    Slot_List::iterator slot,
+                    Slot_List::iterator slot_end,
+                    packed_vector *base
+                ) :
+                    inner_slot_it(inner_it),
+                    inner_slot_it_end(inner_it_end),
+                    slot_it(slot),
+                    slot_it_end(slot_end),
+                    base(base)
+                {}
+
+                reference operator*() const { return inner_slot_it.operator*(); }
+                pointer operator->() = delete;
+
+                auto& operator++()
+                {
+                    ++inner_slot_it;
+
+                    if (inner_slot_it == inner_slot_it_end)
+                    {
+                        ++slot_it;
+
+                        while (slot_it != slot_it_end && slot_it->empty())
+                        {
+                            ++slot_it;
+                        }
+
+                        if (slot_it != slot_it_end)
+                        {
+                            inner_slot_it = slot_it->begin();
+                            inner_slot_it_end = slot_it->end();
+                        }
+                    }
+
+                    return *this;
+                }
+
+                auto operator++(int)
+                {
+                    auto tmp = *this;
+                    ++(*this);
+                    return tmp;
+                }
+
+                friend bool operator==(const iterator& a, const iterator& b) {
+                    return a.inner_slot_it == b.inner_slot_it && a.slot_it == b.slot_it;
+                }
+
+                friend bool operator!=(const iterator& a, const iterator& b) {
+                    return a.inner_slot_it != b.inner_slot_it || a.slot_it != b.slot_it;
+                }
+            };
+
+        private:
+            friend class iterator;
 
         public:
             packed_vector(auto *allocator) :
@@ -255,7 +407,18 @@ namespace zext
                 len = new_size;
             }
 
-            void pop_back() noexcept { slots.back().pop_back(); --len; }
+            void pop_back() noexcept
+            {
+                assert(len > 0);
+
+                slots.back().pop_back();
+                if (slots.back().empty()) slots.pop_back();
+
+                --len;
+            }
+
+            auto begin() { return iterator(slots.begin()->begin(), slots.begin()->end(), slots.begin(), slots.end(), this); }
+            auto end() { return iterator(slots.back().end(), slots.back().end(), slots.end(), slots.end(), this); }
         };
     }
 
