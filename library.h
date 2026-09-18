@@ -26,6 +26,13 @@
 #include <type_traits>
 #include <memory_resource>
 
+// Magic enum integration, to support packed_vector with enums
+#if __has_include(<magic_enum.hpp>)
+#   ifndef ZEXT_DISABLE_MAGIC_ENUM
+#       include <magic_enum.hpp>
+#   endif
+#endif
+
 namespace zext
 {
     namespace __intl__
@@ -272,4 +279,32 @@ namespace zext
             Base(std::pmr::get_default_resource())
         {}
     };
+
+    // Magic enum integration
+#   if __has_include(<magic_enum.hpp>)
+#   ifndef ZEXT_DISABLE_MAGIC_ENUM
+    template <
+        // The type of the elements we return when indexing/retrieving
+        // NOTE: Not necessarily the elements in the vector, as those are bits
+        typename T,
+
+        // How the user prefers to select the inner storage that holds elements
+        config::storage_selection Storage = config::storage_selection::automatic,
+        std::unsigned_integral Word = std::uint32_t
+    >
+    class packed_enum_vector :
+        // Integrate magic_enum to get the count of elements
+        public packed_vector<
+            magic_enum::enum_count<T>,
+            T,
+            Storage,
+            Word
+        >
+    {
+        using Base = packed_vector<magic_enum::enum_count<T>, T>;
+    public:
+        using Base::Base;
+    }
+#   endif
+#   endif
 }
