@@ -52,6 +52,262 @@ namespace zext
         }
 
         template <
+            typename bitset,
+            __maybe_enum T
+        >
+        class __reference_guard
+        {
+            bitset *base;
+            size_t idx;
+            T value;
+
+            void construct_copy(const __reference_guard &other)
+            {
+                base->set(idx, other.value);
+                value = other.value;
+            }
+
+            void construct_copy(__reference_guard &&other)
+            {
+                base = other.base;
+                idx = other.idx;
+                value = other.value;
+
+                other.base = nullptr;
+                other.idx = 0;
+                other.value = T{};
+            }
+
+            enum class arith_op
+            {
+                add,
+                sub,
+                mul,
+                div,
+                mod,
+                and_,
+                or_,
+                xor_,
+                lshift,
+                rshift,
+            };
+
+            auto arith(T val, arith_op op) const
+            {
+                size_t add_val = 0;
+                size_t real_val = 0;
+
+                if constexpr (std::is_enum_v<T>)
+                {
+                    add_val = static_cast<size_t>(val);
+                    real_val = static_cast<size_t>(value);
+                }
+                else
+                {
+                    add_val = val;
+                    real_val = value;
+                }
+
+                size_t res = 0;
+                if constexpr (op == arith_op::add)
+                {
+                    res = real_val + add_val;
+                }
+                else if constexpr (op == arith_op::sub)
+                {
+                    res = real_val - add_val;
+                }
+                else if constexpr (op == arith_op::mul)
+                {
+                    res = real_val * add_val;
+                }
+                else if constexpr (op == arith_op::div)
+                {
+                    res = real_val / add_val;
+                }
+                else if constexpr (op == arith_op::mod)
+                {
+                    res = real_val % add_val;
+                }
+                else if constexpr (op == arith_op::and_)
+                {
+                    res = real_val & add_val;
+                }
+                else if constexpr (op == arith_op::or_)
+                {
+                    res = real_val | add_val;
+                }
+                else if constexpr (op == arith_op::xor_)
+                {
+                    res = real_val ^ add_val;
+                }
+                else if constexpr (op == arith_op::lshift)
+                {
+                    res = real_val << add_val;
+                }
+                else if constexpr (op == arith_op::rshift)
+                {
+                    res = real_val >> add_val;
+                }
+                else
+                {
+                    switch (op)
+                    {
+                        case arith_op::add:
+                            res = real_val + add_val;
+                            break;
+                        case arith_op::sub:
+                            res = real_val - add_val;
+                            break;
+                        case arith_op::mul:
+                            res = real_val * add_val;
+                            break;
+                        case arith_op::div:
+                            res = real_val / add_val;
+                            break;
+                        case arith_op::mod:
+                            res = real_val % add_val;
+                            break;
+                        case arith_op::and_:
+                            res = real_val & add_val;
+                            break;
+                        case arith_op::or_:
+                            res = real_val | add_val;
+                            break;
+                        case arith_op::xor_:
+                            res = real_val ^ add_val;
+                            break;
+                        case arith_op::lshift:
+                            res = real_val << add_val;
+                            break;
+                        case arith_op::rshift:
+                            res = real_val >> add_val;
+                            break;
+                    }
+                }
+
+                return res;
+            }
+
+            auto &reassign_arith(T val, arith_op op)
+            {
+                auto res = arith(val, op);
+                if constexpr (std::is_enum_v<T>)
+                {
+#                   if __has_include(<magic_enum.hpp>)
+#                   ifndef ZEXT_DISABLE_MAGIC_ENUM
+                    auto count = magic_enum::enum_count<T>();
+
+                    base->set(idx, static_cast<T>(res % count));
+                    return;
+#                   endif
+#                   endif
+
+                    base->set(idx, static_cast<T>(res));
+                }
+                else
+                {
+                    base->set(idx, res);
+                    value += val;
+                }
+
+                return *this;
+            }
+
+        public:
+            __reference_guard(bitset *base, size_t idx, T value) :
+                base(base), idx(idx), value(value)
+            {}
+
+            __reference_guard(const __reference_guard &other) noexcept :
+                base(other.base), idx(other.idx), value(other.value)
+            {}
+
+            __reference_guard(__reference_guard &&other) noexcept :
+                base(other.base), idx(other.idx), value(other.value)
+            {
+                other.base = nullptr;
+                other.idx = 0;
+                other.value = T{};
+            }
+
+            auto &operator*() const { return value; }
+            auto operator->() const { return &value; }
+
+            auto operator++() noexcept
+            {
+                auto copy = *this;
+                base->set(idx, value + 1);
+                ++value;
+
+                return copy;
+            }
+
+            auto operator++(int) noexcept
+            {
+                base->set(idx, value + 1);
+                ++value;
+
+                return *this;
+            }
+
+            auto operator+=(T val) noexcept{ return reassign_arith(val, arith_op::add); }
+            auto operator-=(T val) noexcept{ return reassign_arith(val, arith_op::sub); }
+            auto operator*=(T val) noexcept{ return reassign_arith(val, arith_op::mul); }
+            auto operator/=(T val) noexcept{ return reassign_arith(val, arith_op::div); }
+            auto operator&=(T val) noexcept{ return reassign_arith(val, arith_op::and_); }
+            auto operator|=(T val) noexcept{ return reassign_arith(val, arith_op::or_); }
+            auto operator^=(T val) noexcept{ return reassign_arith(val, arith_op::xor_); }
+            auto operator<<=(T val) noexcept{ return reassign_arith(val, arith_op::lshift); }
+            auto operator>>=(T val) noexcept{ return reassign_arith(val, arith_op::rshift); }
+            auto operator%=(T val) noexcept{ return reassign_arith(val, arith_op::mod); }
+
+            auto operator==(T val) const { return value == val; }
+            auto operator!=(T val) const { return value != val; }
+            auto operator<=(T val) const { return value <= val; }
+            auto operator>=(T val) const { return value >= val; }
+            auto operator<(T val) const { return value < val; }
+            auto operator>(T val) const { return value > val; }
+            auto operator!() const { return !value; }
+            auto operator~() const { return ~value; }
+
+            auto operator+(T val) const { return arith(val, arith_op::add); }
+            auto operator-(T val) const { return arith(val, arith_op::sub); }
+            auto operator/(T val) const { return arith(val, arith_op::div); }
+            auto operator*(T val) const { return arith(val, arith_op::mul); }
+            auto operator%(T val) const { return arith(val, arith_op::mod); }
+            auto operator&(T val) const { return arith(val, arith_op::and_); }
+            auto operator|(T val) const { return arith(val, arith_op::or_); }
+            auto operator^(T val) const { return arith(val, arith_op::xor_); }
+            auto operator<<(T val) const { return arith(val, arith_op::lshift); }
+            auto operator>>(T val) const { return arith(val, arith_op::rshift); }
+
+            auto &operator=(T val)
+            {
+                base->set(idx, val);
+                value = val;
+
+                return *this;
+            }
+
+            auto &operator=(const __reference_guard &other) noexcept
+            {
+                if (this == &other) return *this;
+
+                construct_copy(other);
+                return *this;
+            }
+
+            auto &operator=(__reference_guard &&other) noexcept
+            {
+                if (this == &other) return *this;
+
+                construct_copy(other);
+                return *this;
+            }
+        };
+
+        template <
             unsigned Bits_Per_Element,
             std::unsigned_integral Container_Type,
             __maybe_enum T
@@ -67,6 +323,18 @@ namespace zext
             // The maximum number of elements we can store in a single slot
             static constexpr auto max_elements = max_bits / Bits_Per_Element;
 
+            using retrieve_type =
+                __reference_guard<
+                    __bitset_base_inner<Bits_Per_Element, Container_Type, T>,
+                    T
+                >;
+
+            using const_retrieve_type =
+                __reference_guard<
+                    const __bitset_base_inner<Bits_Per_Element, Container_Type, T>,
+                    T
+                >;
+
             class __iterator
             {
                 using Inner = __bitset_base_inner *;
@@ -75,7 +343,7 @@ namespace zext
 
             public:
                 using iterator_category = std::forward_iterator_tag;
-                using value_type        = T;
+                using value_type        = retrieve_type;
                 using difference_type   = std::ptrdiff_t;
                 using pointer           = void;
                 using reference         = value_type;
@@ -97,7 +365,8 @@ namespace zext
                     return *this;
                 }
 
-                reference operator*() const { return base->retrieve(idx); }
+                const_retrieve_type operator*() const { return base->retrieve(idx); }
+                reference operator*() { return base->retrieve(idx); }
                 pointer operator->() = delete;
 
                 auto& operator++()
@@ -134,6 +403,20 @@ namespace zext
             std::bitset<max_bits> bits;
             size_t len = 0; // Number of active elements in the slot
 
+            auto at(size_t idx) const
+            {
+                auto begin = Bits_Per_Element * idx;
+                auto end = begin + Bits_Per_Element;
+                unsigned int result = 0;
+
+                for (auto i = begin; i < end; ++i)
+                {
+                    result |= unsigned{bits[i]} << (end - i - 1);
+                }
+
+                return result;
+            }
+
         public:
             [[nodiscard]] bool full() const noexcept { return len == max_elements; }
 
@@ -154,18 +437,22 @@ namespace zext
                 set(len++, val);
             }
 
-            auto retrieve(size_t idx) const
+            retrieve_type retrieve(size_t idx)
             {
-                auto begin = Bits_Per_Element * idx;
-                auto end = begin + Bits_Per_Element;
-                unsigned int result = 0;
+                return retrieve_type{
+                    this,
+                    idx,
+                    static_cast<T>(at(idx))
+                };
+            }
 
-                for (auto i = begin; i < end; ++i)
-                {
-                    result |= unsigned{bits[i]} << (end - i - 1);
-                }
-
-                return (T)result;
+            const_retrieve_type retrieve(size_t idx) const
+            {
+                return const_retrieve_type{
+                    this,
+                    idx,
+                    static_cast<T>(at(idx))
+                };
             }
 
             auto size() const noexcept { return len; }
@@ -207,6 +494,7 @@ namespace zext
             [[nodiscard]] auto full()           const noexcept { return inner.full(); }
 
             [[nodiscard]] auto at(size_t idx) const { return inner.retrieve(idx); }
+            [[nodiscard]] auto at(size_t idx)       { return inner.retrieve(idx); }
 
             template <typename ...Args>
             void emplace_back(Args &&...args)
@@ -308,7 +596,7 @@ namespace zext
                 using value_type        = T;
                 using difference_type   = std::ptrdiff_t;
                 using pointer           = void;
-                using reference         = value_type;
+                using reference         = Slot::Base::retrieve_type;
 
             private:
                 packed_vector *base;
@@ -334,7 +622,8 @@ namespace zext
                     base(base)
                 {}
 
-                reference operator*() const { return inner_slot_it.operator*(); }
+                auto operator*() const { return inner_slot_it.operator*(); }
+                auto operator*() { return inner_slot_it.operator*(); }
                 pointer operator->() = delete;
 
                 auto& operator++()
@@ -386,6 +675,7 @@ namespace zext
 
             [[nodiscard]] auto size()       const noexcept { return len; }
             auto operator[](size_t idx)     const { return at(idx); }
+            auto operator[](size_t idx)           { return at(idx); }
 
             template <typename... Args>
             void emplace_back(Args &&... value)
@@ -400,6 +690,14 @@ namespace zext
             }
 
             [[nodiscard]] auto at(size_t idx) const
+            {
+                assert(idx < len);
+                auto slot_idx = idx / Slot::Base::max_elements;
+                auto relative_idx = idx % Slot::Base::max_elements;
+                return slots[slot_idx].at(relative_idx);
+            }
+
+            [[nodiscard]] auto at(size_t idx)
             {
                 assert(idx < len);
                 auto slot_idx = idx / Slot::Base::max_elements;
