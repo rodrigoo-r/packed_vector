@@ -94,6 +94,7 @@ namespace zext
             }
 
             auto size() const noexcept { return len; }
+            auto pop() noexcept { len--; }
         };
 
         template <
@@ -132,6 +133,7 @@ namespace zext
             }
 
             void push_back(T value) { inner.insert(value); }
+            void pop_back() noexcept { inner.pop(); }
         };
 
         template<std::unsigned_integral T>
@@ -252,6 +254,8 @@ namespace zext
                 resize_pool(slots_requested);
                 len = new_size;
             }
+
+            void pop_back() noexcept { slots.back().pop_back(); --len; }
         };
     }
 
