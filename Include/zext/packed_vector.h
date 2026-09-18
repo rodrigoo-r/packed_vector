@@ -4,7 +4,7 @@
 // A variation of the STL std::vector, exclusively for
 // unsigned integer or enum values.
 //
-// Version 0.0.1
+// Version 1.0.0
 // https://github.com/rodrigoo-r/packed_vector
 //
 // Licensed under the Apache License v2.0
