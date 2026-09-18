@@ -109,81 +109,38 @@ namespace zext
                 }
 
                 size_t res = 0;
-                if constexpr (op == arith_op::add)
+                switch (op)
                 {
-                    res = real_val + add_val;
-                }
-                else if constexpr (op == arith_op::sub)
-                {
-                    res = real_val - add_val;
-                }
-                else if constexpr (op == arith_op::mul)
-                {
-                    res = real_val * add_val;
-                }
-                else if constexpr (op == arith_op::div)
-                {
-                    res = real_val / add_val;
-                }
-                else if constexpr (op == arith_op::mod)
-                {
-                    res = real_val % add_val;
-                }
-                else if constexpr (op == arith_op::and_)
-                {
-                    res = real_val & add_val;
-                }
-                else if constexpr (op == arith_op::or_)
-                {
-                    res = real_val | add_val;
-                }
-                else if constexpr (op == arith_op::xor_)
-                {
-                    res = real_val ^ add_val;
-                }
-                else if constexpr (op == arith_op::lshift)
-                {
-                    res = real_val << add_val;
-                }
-                else if constexpr (op == arith_op::rshift)
-                {
-                    res = real_val >> add_val;
-                }
-                else
-                {
-                    switch (op)
-                    {
-                        case arith_op::add:
-                            res = real_val + add_val;
-                            break;
-                        case arith_op::sub:
-                            res = real_val - add_val;
-                            break;
-                        case arith_op::mul:
-                            res = real_val * add_val;
-                            break;
-                        case arith_op::div:
-                            res = real_val / add_val;
-                            break;
-                        case arith_op::mod:
-                            res = real_val % add_val;
-                            break;
-                        case arith_op::and_:
-                            res = real_val & add_val;
-                            break;
-                        case arith_op::or_:
-                            res = real_val | add_val;
-                            break;
-                        case arith_op::xor_:
-                            res = real_val ^ add_val;
-                            break;
-                        case arith_op::lshift:
-                            res = real_val << add_val;
-                            break;
-                        case arith_op::rshift:
-                            res = real_val >> add_val;
-                            break;
-                    }
+                    case arith_op::add:
+                        res = real_val + add_val;
+                        break;
+                    case arith_op::sub:
+                        res = real_val - add_val;
+                        break;
+                    case arith_op::mul:
+                        res = real_val * add_val;
+                        break;
+                    case arith_op::div:
+                        res = real_val / add_val;
+                        break;
+                    case arith_op::mod:
+                        res = real_val % add_val;
+                        break;
+                    case arith_op::and_:
+                        res = real_val & add_val;
+                        break;
+                    case arith_op::or_:
+                        res = real_val | add_val;
+                        break;
+                    case arith_op::xor_:
+                        res = real_val ^ add_val;
+                        break;
+                    case arith_op::lshift:
+                        res = real_val << add_val;
+                        break;
+                    case arith_op::rshift:
+                        res = real_val >> add_val;
+                        break;
                 }
 
                 return res;
