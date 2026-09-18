@@ -425,6 +425,23 @@ namespace zext
 
             auto begin() { return iterator(slots.begin()->begin(), slots.begin()->end(), slots.begin(), slots.end(), this); }
             auto end() { return iterator(slots.back().end(), slots.back().end(), slots.end(), slots.end(), this); }
+            
+            auto front()
+            {
+                assert(len > 0);
+                return slots.front().at(0);
+            }
+
+            auto back()
+            {
+                assert(len > 0);
+
+                auto &last_slot = slots.back();
+                return last_slot.at(last_slot.size() - 1);
+            }
+
+            auto capacity() const noexcept { return slots.capacity(); }
+            auto slot_capacity() const noexcept { return bits_per_element; }
         };
     }
 
