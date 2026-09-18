@@ -35,7 +35,62 @@ namespace zext
 
         template <
             unsigned Bits_Per_Element,
-            unsigned Max_Value,
+            std::unsigned_integral Container_Type,
+            __maybe_enum T
+        >
+        class __bitset_base_inner
+        {
+        public:
+            // The maximum amount of bits we can store in a single slot
+            // Effectively, we may have some bits unused. We trade throughput
+            // for memory footprint reduction
+            static constexpr auto max_bits = sizeof(Container_Type) * CHAR_BIT;
+
+            // The maximum number of elements we can store in a single slot
+            static constexpr auto max_elements = max_bits / Bits_Per_Element;
+
+        private:
+            // Assert that the elements are smaller than the number of bits
+            // we can store in a single slot
+            static_assert(Bits_Per_Element <= max_bits);
+
+            std::bitset<max_bits> bits;
+            size_t len = 0; // Number of active elements in the slot
+
+        public:
+            [[nodiscard]] bool full() const noexcept { return len == max_elements; }
+
+            void insert(T val)
+            {
+                assert(!full());
+                const auto begin = len++ * Bits_Per_Element;
+
+                auto insert_value = (Container_Type)val;
+                for (std::size_t bit = 0; bit < Bits_Per_Element; ++bit)
+                {
+                    bits[begin + bit] = (insert_value >> (Bits_Per_Element - bit - 1)) & 1;
+                }
+            }
+
+            auto retrieve(size_t idx) const
+            {
+                auto begin = Bits_Per_Element * idx;
+                auto end = begin + Bits_Per_Element;
+                unsigned int result = 0;
+
+                for (auto i = begin; i < end; ++i)
+                {
+                    result |= unsigned{bits[i]} << (end - i - 1);
+                }
+
+                return (T)result;
+            }
+
+            auto size() const noexcept { return len; }
+        };
+
+        template <
+            unsigned Bits_Per_Element,
 
             // The inner container type that holds the integers
             std::unsigned_integral Container_Type,
@@ -47,84 +102,29 @@ namespace zext
         class __packed_slot_base
         {
         public:
-            // The maximum amount of bits we can store in a single slot
-            // Effectively, we may have some bits unused. We trade throughput
-            // for memory footprint reduction
-            static constexpr auto max_bits = sizeof(Container_Type) * CHAR_BIT;
-
-            // The maximum number of elements we can store in a single slot
-            static constexpr auto max_elements = max_bits / Bits_Per_Element;
-
-            // Assert that the elements are smaller than the number of bits
-            // we can store in a single slot
-            static_assert(Bits_Per_Element <= max_bits);
+            using Base = __bitset_base_inner<Bits_Per_Element, Container_Type, T>;
 
         private:
-            std::bitset<max_bits> bits; // Main storage for bits
-            size_t len = 0; // Number of active elements in the slot
+            Base inner;
 
         public:
-            [[nodiscard]] auto size()           const noexcept { return len; }
-            [[nodiscard]] auto empty()          const noexcept { return len == 0; }
-            [[nodiscard]] auto capacity()       const noexcept { return max_elements; }
-            [[nodiscard]] auto capacity_bits()  const noexcept { return max_bits; }
-            [[nodiscard]] auto max_size()       const noexcept { return max_elements; }
-            [[nodiscard]] auto full()           const noexcept { return len == max_elements; }
+            [[nodiscard]] auto size()           const noexcept { return inner.size(); }
+            [[nodiscard]] auto empty()          const noexcept { return size() == 0; }
+            [[nodiscard]] auto capacity()       const noexcept { return Base::max_elements; }
+            [[nodiscard]] auto capacity_bits()  const noexcept { return Base::max_bits; }
+            [[nodiscard]] auto max_size()       const noexcept { return Base::max_elements; }
+            [[nodiscard]] auto full()           const noexcept { return size() == Base::max_elements; }
 
-            void insert_bits(size_t index, T value)
-            {
-                assert(!full() && (Container_Type)value <= Max_Value);
-
-                // NOTE: index is in elements, not bits!
-                auto begin = index * Bits_Per_Element;
-                auto end = begin + Bits_Per_Element;
-
-                if constexpr (std::is_enum_v<T>)
-                {
-                    auto ins_value = (Container_Type)value;
-                    for (auto i = begin; i < end; ++i)
-                    {
-                        bits[i] = (ins_value >> (end - i - 1)) & 1;
-                    }
-                }
-                else
-                {
-                    for (auto i = begin; i < end; ++i)
-                    {
-                        bits[i] = (value >> (end - i - 1)) & 1;
-                    }
-                }
-
-                ++len;
-            }
-
-            [[nodiscard]] auto at(size_t idx) const
-            {
-                assert(idx < len);
-                // NOTE: idx is in elements, not bits!
-                auto begin = idx * Bits_Per_Element;
-                auto end = begin + Bits_Per_Element;
-                Container_Type result = 0;
-
-                for (auto i = begin; i < end; ++i)
-                {
-                    result |= (bits[i] << (end - i - 1));
-                }
-
-                return (T)result;
-            }
+            [[nodiscard]] auto at(size_t idx) const { return inner.retrieve(idx); }
 
             template <typename ...Args>
             void emplace_back(Args &&...args)
             {
                 auto val = T{ std::forward<Args>(args)... };
-                insert_bits(len, std::move(val));
+                inner.insert(std::move(val));
             }
 
-            void push_back(T value)
-            {
-                insert_bits(len, value);
-            }
+            void push_back(T value) { inner.insert(value); }
         };
 
         template<std::unsigned_integral T>
@@ -191,7 +191,7 @@ namespace zext
             ;
 
             using Slot =
-                __intl__::__packed_slot_base<bits_per_element, Max_Value, Inner_Container, T>;
+                __intl__::__packed_slot_base<bits_per_element, Inner_Container, T>;
 
             std::pmr::vector<Slot> slots;
             size_t len = 0; // Number of active elements across all containers
@@ -219,7 +219,9 @@ namespace zext
             [[nodiscard]] auto at(size_t idx) const
             {
                 assert(idx < len);
-                return slots[idx / bits_per_element].at(idx % bits_per_element);
+                auto slot_idx = idx / Slot::Base::max_elements;
+                auto relative_idx = idx % Slot::Base::max_elements;
+                return slots[slot_idx].at(relative_idx);
             }
 
             void push_back(T value) { emplace_back(value); }
