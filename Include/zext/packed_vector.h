@@ -27,7 +27,7 @@
 #include <memory_resource>
 
 // Magic enum integration, to support packed_vector with enums
-#if __has_include(<magic_enum.hpp>)
+#if __has_include(<magic_enum/magic_enum.hpp>)
 #   ifndef ZEXT_DISABLE_MAGIC_ENUM
 #       include <magic_enum.hpp>
 #   endif
@@ -757,7 +757,7 @@ namespace zext
     };
 
     // Magic enum integration
-#   if __has_include(<magic_enum.hpp>)
+#   if __has_include(<magic_enum/magic_enum.hpp>)
 #   ifndef ZEXT_DISABLE_MAGIC_ENUM
     template <
         // The type of the elements we return when indexing/retrieving
